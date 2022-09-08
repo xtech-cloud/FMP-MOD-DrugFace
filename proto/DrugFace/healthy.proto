@@ -1,0 +1,23 @@
+
+syntax = "proto3";
+import "shared.proto";
+
+option csharp_namespace = "XTC.FMP.MOD.DrugFace.LIB.Proto";
+package xtc.fmp.drugface;
+
+// 健康
+service Healthy {
+    // 回显
+    rpc Echo(HealthyEchoRequest) returns (HealthyEchoResponse) {}
+}
+
+// 回显的请求
+message HealthyEchoRequest {
+    string msg = 1;
+}
+
+// 回显的回复
+message HealthyEchoResponse {
+    Status status = 1;
+    string msg = 2;
+}

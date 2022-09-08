@@ -1,0 +1,19 @@
+
+/_dist_/
+/_build_/
+/DrugFace/Assets/TextMesh Pro/
+/DrugFace/Assets/TextMesh Pro.meta
+/DrugFace/Assets/Plugins/
+/DrugFace/Assets/Plugins.meta
+/DrugFace/Assets/3rd/
+/DrugFace/Assets/3rd.meta
+/DrugFace/Library/
+/DrugFace/obj/
+/DrugFace/Logs/
+/DrugFace/Temp/
+/DrugFace/UserSettings/
+/DrugFace/*.sln
+/DrugFace/*.csproj
+/DrugFace/.vsconfig
+/DrugFace/.vs/
+/.UNITY_HOME.env

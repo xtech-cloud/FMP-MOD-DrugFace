@@ -1,0 +1,25 @@
+
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>XTC.FMP.MOD.DrugFace.LIB.Razor</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AntDesign" Version="0.11.0" />
+    <PackageReference Include="AntDesign.ProLayout" Version="0.10.6" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\fmp-xtc-drugface-lib-mvcs\fmp-xtc-drugface-lib-mvcs.csproj" />
+  </ItemGroup>
+
+</Project>

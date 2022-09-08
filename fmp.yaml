@@ -1,0 +1,11 @@
+org_name: XTC
+module_name: DrugFace
+generate:
+  active: true
+  database_driver: none
+  debug: false
+  unity_solution: true
+publish:
+  active: true
+  environment: product
+  repository: grpc://localhost:18000

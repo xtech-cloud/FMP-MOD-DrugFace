@@ -1,0 +1,49 @@
+
+syntax = "proto3";
+
+option csharp_namespace = "XTC.FMP.MOD.DrugFace.LIB.Proto";
+package xtc.fmp.drugface;
+
+// 状态
+message Status
+{
+    int32 code = 1;  // 状态码
+    string message = 2;  // 状态信息
+}
+
+// 空白请求
+message BlankRequest
+{
+}
+
+// 空白回复
+message BlankResponse
+{
+    Status status = 1;  // 状态
+}
+
+// 作用域的请求
+message ScopeRequest
+{
+    string scope = 1;  // 作用域
+}
+
+// 作用域的回复
+message ScopeResponse
+{
+    Status status = 1;  // 状态
+    string scope = 2;  // 作用域
+}
+
+// UUID的请求
+message UuidRequest
+{
+    string uuid = 1;  // 唯一识别码
+}
+
+// UUID的回复
+message UuidResponse
+{
+    Status status = 1;  // 状态
+    string uuid = 2;  // 唯一识别码
+}

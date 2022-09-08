@@ -1,0 +1,23 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>XTC.FMP.MOD.DrugFace.LIB.MVCS</RootNamespace>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="fmp-lib-mvcs" Version="1.6.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.47.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\fmp-xtc-drugface-lib-bridge\fmp-xtc-drugface-lib-bridge.csproj" />
+    <ProjectReference Include="..\fmp-xtc-drugface-lib-proto\fmp-xtc-drugface-lib-proto.csproj" />
+  </ItemGroup>
+
+</Project>
+
