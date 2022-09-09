@@ -1,45 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <MyConfig version="1.0">
-    <!-- UI 
+  <!-- UI 
       visible: 预加载完成后是否显示
       slot: ui根节点在主Canvas中的挂载路径
     -->
-    <UI visible="true" slot="[root]"/>
-    <!-- 远程过程调用
+  <UI visible="true" slot="[root]"/>
+  <!-- 远程过程调用
       address: 地址
     -->
-    <GRPC address="https://localhost:19000"/>
-    <!-- 样式列表
+  <GRPC address="https://localhost:19000"/>
+  <!-- 样式列表
       name: 名称
     -->
-    <Styles>
-        <Style name="default">
-        </Style>
-    </Styles>
-    <!-- 预创建的实例列表
+  <Styles>
+    <Style name="default">
+      <Camera width="640" height="320" fps="30"/>
+    </Style>
+  </Styles>
+  <!-- 预创建的实例列表
       uid: 实例的唯一ID
       style: 使用的样式名
     -->
-    <Instances>
-        <Instance uid="default" style="default"/>
-    </Instances>
-    <!-- 预加载 -->
-    <Preload>
-        <!-- 消息订阅的主题
+  <Instances>
+    <Instance uid="default" style="default"/>
+  </Instances>
+  <!-- 预加载 -->
+  <Preload>
+    <!-- 消息订阅的主题
           message: 消息
           Parameter.key: 参数的键
           Parameter.value: 参数的值
           Parameter.type: 参数的类型，支持的类型为string,int,float,bool
         -->
-        <Subjects>
-            <Subject message="/XTC/DrugFace/Open">
-                <Parameters>
-                    <Parameter key="uid" value="default" type="string"/>
-                    <Parameter key="source" value="" type="string"/>
-                    <Parameter key="uri" value="" type="string"/>
-                    <Parameter key="delay" value="0" type="float"/>
-                </Parameters>
-            </Subject>
-        </Subjects>
-    </Preload>
+    <Subjects>
+      <Subject message="/XTC/DrugFace/Open">
+        <Parameters>
+          <Parameter key="uid" value="default" type="string"/>
+          <Parameter key="source" value="" type="string"/>
+          <Parameter key="uri" value="" type="string"/>
+          <Parameter key="delay" value="0" type="float"/>
+        </Parameters>
+      </Subject>
+    </Subjects>
+  </Preload>
 </MyConfig>

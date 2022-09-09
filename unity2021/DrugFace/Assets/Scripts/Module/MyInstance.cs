@@ -8,7 +8,7 @@ using LibMVCS = XTC.FMP.LIB.MVCS;
 using XTC.FMP.MOD.DrugFace.LIB.Proto;
 using XTC.FMP.MOD.DrugFace.LIB.MVCS;
 using System.Collections;
-using UnityEngine.Timeline;
+using FaceAnalyzer;
 
 namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 {
@@ -28,15 +28,28 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
     /// </summary>
     public class MyInstance : MyInstanceBase
     {
+        enum Status
+        {
+            Idle,
+            Ready,
+            Busy
+        }
+
         private ToggleGroup groupYears_;
         private Transform dial_;
         private Button btnPhoto_;
         private Button btnReset_;
         private Transform organ_;
         private Transform defaultFace_;
+        private RawImage imgCamera_;
         private List<Stage> stages_ = new List<Stage>();
+        private Image[] numbers_ = new Image[6];
         private int currentStage_ = 0;
         private bool autoPlaying_;
+        private Coroutine coroutineDetectFace_;
+        private Status status_;
+
+        private CameraFaceAnalyzer faceAnalyzer_;
 
         public MyInstance(string _uid, string _style, MyConfig _config, LibMVCS.Logger _logger, Dictionary<string, LibMVCS.Any> _settings, MyEntryBase _entry, MonoBehaviour _mono, GameObject _rootAttachments)
             : base(_uid, _style, _config, _logger, _settings, _entry, _mono, _rootAttachments)
@@ -56,6 +69,13 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             btnReset_ = rootUI.transform.Find("btnReset").GetComponent<Button>();
             btnPhoto_ = rootUI.transform.Find("btnPhoto").GetComponent<Button>();
             defaultFace_ = rootUI.transform.Find("face/default");
+            imgCamera_ = rootUI.transform.Find("face/camera").GetComponent<RawImage>();
+            numbers_[0] = rootUI.transform.Find("face/camera/5").GetComponent<Image>();
+            numbers_[1] = rootUI.transform.Find("face/camera/4").GetComponent<Image>();
+            numbers_[2] = rootUI.transform.Find("face/camera/3").GetComponent<Image>();
+            numbers_[3] = rootUI.transform.Find("face/camera/2").GetComponent<Image>();
+            numbers_[4] = rootUI.transform.Find("face/camera/1").GetComponent<Image>();
+            numbers_[5] = rootUI.transform.Find("face/camera/0").GetComponent<Image>();
 
             btnReset_.onClick.AddListener(reset);
             btnPhoto_.onClick.AddListener(capture);
@@ -85,6 +105,17 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 });
                 stages_.Add(stage);
             }
+
+
+            faceAnalyzer_ = new CameraFaceAnalyzer();
+            faceAnalyzer_.mono = mono_;
+            faceAnalyzer_.width = style_.camera.width;
+            faceAnalyzer_.height = style_.camera.height;
+            faceAnalyzer_.fps = style_.camera.fps;
+            faceAnalyzer_.targetImage = imgCamera_;
+            faceAnalyzer_.Run();
+
+            coroutineDetectFace_ = mono_.StartCoroutine(detectFace());
         }
 
         /// <summary>
@@ -92,6 +123,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         /// </summary>
         public void HandleDeleted()
         {
+            mono_.StopCoroutine(coroutineDetectFace_);
         }
 
         /// <summary>
@@ -113,6 +145,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private void reset()
         {
+            status_ = Status.Idle;
             dial_.localRotation = Quaternion.Euler(0f, 0f, 0f);
             btnPhoto_.gameObject.SetActive(true);
             btnReset_.gameObject.SetActive(false);
@@ -120,6 +153,10 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             organ_.gameObject.SetActive(false);
             groupYears_.allowSwitchOff = true;
             groupYears_.SetAllTogglesOff();
+            foreach (var number in numbers_)
+            {
+                number.gameObject.SetActive(false);
+            }
 
             Color color = Color.white;
             color.a = 0;
@@ -137,6 +174,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
 
             currentStage_ = -1;
+            status_ = Status.Idle;
         }
 
         private void capture()
@@ -227,6 +265,54 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 index += 1;
                 if (index >= stages_.Count)
                     break;
+            }
+        }
+
+        private IEnumerator detectFace()
+        {
+            float timer = 0;
+            int numberIndex = 0;
+            while (true)
+            {
+                yield return new WaitForEndOfFrame();
+                if (Status.Busy == status_)
+                {
+                    continue;
+                }
+
+                timer += Time.deltaTime;
+
+                bool faceDetected = faceAnalyzer_.DetectFace();
+                defaultFace_.gameObject.SetActive(!faceDetected);
+                // 没有检测到人脸，重置计时器
+                if (!faceDetected)
+                {
+                    numberIndex = 0;
+                    reset();
+                    continue;
+                }
+
+                if (Status.Ready == status_)
+                {
+                    if (timer >= 1.0f)
+                    {
+                        for (int i = 0; i < numbers_.Length; ++i)
+                        {
+                            numbers_[i].gameObject.SetActive(i == numberIndex);
+                        }
+                        numberIndex += 1;
+                        if (numberIndex == 6)
+                        {
+                            status_ = Status.Busy;
+                            numberIndex = 0;
+                            capture();
+                        }
+                        timer = 0.0f;
+                    }
+                    continue;
+                }
+
+                status_ = Status.Ready;
             }
         }
     }
