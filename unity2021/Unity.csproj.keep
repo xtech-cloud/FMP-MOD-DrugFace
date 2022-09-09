@@ -78,6 +78,9 @@
     <Reference Include="UnityEngine.ImageConversionModule">
       <HintPath>{{UNITY_HOME}}\Editor\Data\Managed\UnityEngine\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
+    <Reference Include="FaceAnalyzerPlugin">
+      <HintPath>{{WORK_DIR}}\DrugFace\Assets\3rd\FaceAnalyzer\FaceAnalyzerPlugin.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
