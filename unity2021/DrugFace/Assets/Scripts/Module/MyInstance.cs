@@ -12,11 +12,6 @@ using FaceAnalyzer;
 using UnityEngine.Networking;
 using System;
 using Newtonsoft.Json;
-using static System.Net.WebRequestMethods;
-using System.IO;
-using OpenCover.Framework.Model;
-using System.Buffers.Text;
-using OpenCVCompact;
 
 namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 {
