@@ -14,7 +14,7 @@
     -->
   <Styles>
     <Style name="default">
-      <Camera width="640" height="320" fps="30"/>
+      <Camera width="720" height="720" fps="30"/>
     </Style>
   </Styles>
   <!-- 预创建的实例列表

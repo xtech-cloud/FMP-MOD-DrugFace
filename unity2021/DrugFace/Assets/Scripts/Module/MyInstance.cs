@@ -9,18 +9,28 @@ using XTC.FMP.MOD.DrugFace.LIB.Proto;
 using XTC.FMP.MOD.DrugFace.LIB.MVCS;
 using System.Collections;
 using FaceAnalyzer;
+using UnityEngine.Networking;
+using System;
+using Newtonsoft.Json;
+using static System.Net.WebRequestMethods;
+using System.IO;
+using OpenCover.Framework.Model;
+using System.Buffers.Text;
+using OpenCVCompact;
 
 namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 {
     public class Stage
     {
         public int index;
+        public int year;
         public Toggle tgTime;
         public Image imgBrain;
         public Image imgHeart;
         public Image imgLiver;
         public Image imgFace;
         public float angle;
+        public float fillAmount;
     }
 
     /// <summary>
@@ -41,12 +51,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private Button btnReset_;
         private Transform organ_;
         private Transform defaultFace_;
+        private Image scaleLight_;
         private RawImage imgCamera_;
         private List<Stage> stages_ = new List<Stage>();
         private Image[] numbers_ = new Image[6];
         private int currentStage_ = 0;
         private bool autoPlaying_;
         private Coroutine coroutineDetectFace_;
+        private Coroutine coroutineInvokeAPI_;
         private Status status_;
 
         private CameraFaceAnalyzer faceAnalyzer_;
@@ -65,6 +77,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
             dial_ = rootUI.transform.Find("dial");
             organ_ = rootUI.transform.Find("organ");
+            scaleLight_ = rootUI.transform.Find("scale/light").GetComponent<Image>();
             groupYears_ = rootUI.transform.Find("scale/years").GetComponent<ToggleGroup>();
             btnReset_ = rootUI.transform.Find("btnReset").GetComponent<Button>();
             btnPhoto_ = rootUI.transform.Find("btnPhoto").GetComponent<Button>();
@@ -80,9 +93,13 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             btnReset_.onClick.AddListener(reset);
             btnPhoto_.onClick.AddListener(capture);
 
+            int[] years = new int[] { 1, 2, 4, 6, 8, 10, 12, 15 };
+            float[] fillAmounts = new float[] { 0.03f, 0.17f, 0.3f, 0.444f, 0.58f, 0.724f, 0.858f, 1 };
             for (int i = 0; i < 8; i++)
             {
                 Stage stage = new Stage();
+                stage.year = years[i];
+                stage.fillAmount = fillAmounts[i];
                 stage.index = i;
                 stage.tgTime = rootUI.transform.Find("scale/years").GetChild(i).GetComponent<Toggle>();
                 stage.imgBrain = rootUI.transform.Find("organ/1").GetChild(i).GetComponent<Image>();
@@ -150,9 +167,11 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             btnPhoto_.gameObject.SetActive(true);
             btnReset_.gameObject.SetActive(false);
             defaultFace_.gameObject.SetActive(true);
+            imgCamera_.gameObject.SetActive(true);
             organ_.gameObject.SetActive(false);
             groupYears_.allowSwitchOff = true;
             groupYears_.SetAllTogglesOff();
+            scaleLight_.fillAmount = 0f;
             foreach (var number in numbers_)
             {
                 number.gameObject.SetActive(false);
@@ -179,14 +198,27 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private void capture()
         {
-            btnPhoto_.gameObject.SetActive(false);
-            btnReset_.gameObject.SetActive(true);
-            organ_.gameObject.SetActive(true);
-            stages_[0].tgTime.isOn = true;
-            groupYears_.allowSwitchOff = false;
-            defaultFace_.gameObject.SetActive(false);
+            if (null != coroutineInvokeAPI_)
+                mono_.StopCoroutine(coroutineInvokeAPI_);
 
-            mono_.StartCoroutine(autoPlay());
+            coroutineInvokeAPI_ = mono_.StartCoroutine(invokeAPI(() =>
+            {
+                coroutineInvokeAPI_ = null;
+                reset();
+            }, () =>
+            {
+                coroutineInvokeAPI_ = null;
+
+                btnPhoto_.gameObject.SetActive(false);
+                btnReset_.gameObject.SetActive(true);
+                organ_.gameObject.SetActive(true);
+                stages_[0].tgTime.isOn = true;
+                groupYears_.allowSwitchOff = false;
+                defaultFace_.gameObject.SetActive(false);
+                imgCamera_.gameObject.SetActive(false);
+
+                mono_.StartCoroutine(autoPlay());
+            }));
         }
 
         private IEnumerator rotateDial(Stage _stage)
@@ -314,6 +346,175 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
                 status_ = Status.Ready;
             }
+        }
+
+
+
+        class ReplyAPI
+        {
+            public string access_token;
+            public string error = "";
+        }
+
+        class MergeRequest
+        {
+            public class Image
+            {
+                public string image = "";
+                public string image_type = "BASE64";
+            }
+
+            public string version = "4.0";
+            public float alpha = 0.5f;
+            public Image image_template = new Image();
+            public Image image_target = new Image();
+        }
+
+        class MergeReply
+        {
+            public class Result
+            {
+                public string merge_image;
+            }
+            public int error_code = 0;
+            public string error_msg = "";
+            public Result result = new Result();
+        }
+
+        private IEnumerator invokeAPI(Action _onError, Action _onSuccess)
+        {
+            var webCamTexture = faceAnalyzer_.WebCamTexture;
+            logger_.Info("size of webcam is {0}x{1}", webCamTexture.width, webCamTexture.height);
+            Texture2D t2d = new Texture2D(webCamTexture.width, webCamTexture.height, TextureFormat.RGBA32, false);
+            t2d.SetPixels(webCamTexture.GetPixels()); 
+            t2d.Apply();
+
+            defaultFace_.gameObject.SetActive(true);
+            byte[] imageTempleteData = t2d.EncodeToJPG();
+            logger_.Info("size of image_template is {0}", imageTempleteData.Length);
+            string imageTemplateBase64 = System.Convert.ToBase64String(imageTempleteData);
+
+            // 载入目标图
+            // {
+            string datapath = settings_["datapath"].AsString();
+            string vendor = settings_["vendor"].AsString();
+            string dir = System.IO.Path.Combine(datapath, vendor);
+            dir = System.IO.Path.Combine(dir, "themes");
+            dir = System.IO.Path.Combine(dir, MyEntryBase.ModuleName);
+            string targetImageFile = System.IO.Path.Combine(dir, "4/m_1.jpg");
+            string targetBase64 = "";
+            logger_.Trace(targetImageFile);
+            using (var uwr = new UnityWebRequest(new Uri(targetImageFile)))
+            {
+                uwr.downloadHandler = new DownloadHandlerBuffer();
+                yield return uwr.SendWebRequest();
+                if (uwr.result != UnityWebRequest.Result.Success)
+                {
+                    logger_.Error(uwr.error);
+                    _onError();
+                    yield break;
+                }
+                var data = uwr.downloadHandler.data;
+                logger_.Info("size of image_target is {0}", data.Length);
+                targetBase64 = System.Convert.ToBase64String(data);
+            }
+            // }
+
+            // 获取token
+            // {
+            WWWForm form = new WWWForm();
+            form.AddField("grant_type", "client_credentials");
+            form.AddField("client_id", "fZqIE9XOwBujIVyiB1OpiZ3h");
+            form.AddField("client_secret", "a64mqWt4Hbkz6FrmeykwaAceaRqCO3SO");
+
+            string token;
+            using (UnityWebRequest uwr = UnityWebRequest.Post("https://aip.baidubce.com/oauth/2.0/token", form))
+            {
+                yield return uwr.SendWebRequest();
+
+                if (uwr.result != UnityWebRequest.Result.Success)
+                {
+                    logger_.Error(uwr.error);
+                    _onError();
+                    yield break;
+                }
+
+                string result = uwr.downloadHandler.text;
+                logger_.Info(result);
+                var reply = JsonConvert.DeserializeObject<ReplyAPI>(result);
+                if (null == reply)
+                {
+                    logger_.Error("reply is null");
+                    _onError();
+                    yield break;
+                }
+
+                if (string.IsNullOrEmpty(reply.access_token))
+                {
+                    logger_.Error(reply.error);
+                    _onError();
+                    yield break;
+                }
+                token = reply.access_token;
+            }
+            // }
+
+            string url = "https://aip.baidubce.com/rest/2.0/face/v1/merge?access_token=" + token;
+            var request = new MergeRequest();
+            request.image_template.image = imageTemplateBase64;
+            request.image_target.image = targetBase64;
+            string json = JsonConvert.SerializeObject(request);
+            logger_.Info(json);
+
+            // 最后一个阶段不用生成
+            for (int i = 0; i < stages_.Count - 1; i++)
+            {
+                request.alpha = (float)Math.Round(stages_[i].year / 15.0f, 2);
+                logger_.Trace(request.alpha.ToString());
+                using (UnityWebRequest uwr = new UnityWebRequest(url, "POST"))
+                {
+                    byte[] postBytes = System.Text.Encoding.UTF8.GetBytes(json);
+                    uwr.uploadHandler = new UploadHandlerRaw(postBytes);
+                    uwr.downloadHandler = new DownloadHandlerBuffer();
+                    uwr.SetRequestHeader("Content-Type", "application/json");
+                    yield return uwr.SendWebRequest();
+
+                    if (uwr.result != UnityWebRequest.Result.Success)
+                    {
+                        logger_.Error(uwr.error);
+                        _onError();
+                        yield break;
+                    }
+
+                    string result = uwr.downloadHandler.text;
+                    var reply = JsonConvert.DeserializeObject<MergeReply>(result);
+                    if (null == reply)
+                    {
+                        logger_.Error("reply is null");
+                        _onError();
+                        yield break;
+                    }
+
+                    if (0 != reply.error_code)
+                    {
+                        logger_.Error(reply.error_msg);
+                        _onError();
+                        yield break;
+                    }
+                    byte[] data = System.Convert.FromBase64String(reply.result.merge_image);
+                    System.IO.File.WriteAllBytes(string.Format("D:/{0}.jpg", i), data);
+                    Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
+                    texture.LoadImage(data);
+                    Sprite sprite = Sprite.Create(texture, new UnityEngine.Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                    stages_[i].imgFace.sprite = sprite;
+                    scaleLight_.fillAmount = stages_[i].fillAmount;
+                }
+            }
+            logger_.Info("merge success!!");
+            scaleLight_.fillAmount = 1.0f;
+            defaultFace_.gameObject.SetActive(false);
+            yield return new WaitForEndOfFrame();
+            _onSuccess();
         }
     }
 }

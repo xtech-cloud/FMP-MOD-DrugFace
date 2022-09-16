@@ -11,10 +11,10 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         public class Camera
         {
             [XmlAttribute("width")]
-            public int width { get; set; } = 640;
+            public int width { get; set; } = 720;
 
             [XmlAttribute("height")]
-            public int height { get; set; } = 480;
+            public int height { get; set; } = 720;
 
             [XmlAttribute("fps")]
             public int fps { get; set; } = 30;
