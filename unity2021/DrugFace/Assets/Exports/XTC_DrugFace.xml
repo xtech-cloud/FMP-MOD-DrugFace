@@ -14,7 +14,12 @@
     -->
   <Styles>
     <Style name="default">
-      <Camera width="720" height="720" fps="30"/>
+      <!-- 摄像头
+       请求的摄像头的像素越高，流畅度越低，如果摄像头支持，建议使用默认值800x600
+       width: 摄像头支持的分辨率的宽度
+       height: 摄像头支持的分辨率的高度
+      -->
+      <Camera width="800" height="600" fps="30"/>
     </Style>
   </Styles>
   <!-- 预创建的实例列表

@@ -381,7 +381,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             var webCamTexture = faceAnalyzer_.WebCamTexture;
             logger_.Info("size of webcam is {0}x{1}", webCamTexture.width, webCamTexture.height);
             Texture2D t2d = new Texture2D(webCamTexture.width, webCamTexture.height, TextureFormat.RGBA32, false);
-            t2d.SetPixels(webCamTexture.GetPixels()); 
+            t2d.SetPixels(webCamTexture.GetPixels());
             t2d.Apply();
 
             defaultFace_.gameObject.SetActive(true);
@@ -389,31 +389,11 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             logger_.Info("size of image_template is {0}", imageTempleteData.Length);
             string imageTemplateBase64 = System.Convert.ToBase64String(imageTempleteData);
 
-            // 载入目标图
-            // {
             string datapath = settings_["datapath"].AsString();
             string vendor = settings_["vendor"].AsString();
             string dir = System.IO.Path.Combine(datapath, vendor);
             dir = System.IO.Path.Combine(dir, "themes");
             dir = System.IO.Path.Combine(dir, MyEntryBase.ModuleName);
-            string targetImageFile = System.IO.Path.Combine(dir, "4/m_1.jpg");
-            string targetBase64 = "";
-            logger_.Trace(targetImageFile);
-            using (var uwr = new UnityWebRequest(new Uri(targetImageFile)))
-            {
-                uwr.downloadHandler = new DownloadHandlerBuffer();
-                yield return uwr.SendWebRequest();
-                if (uwr.result != UnityWebRequest.Result.Success)
-                {
-                    logger_.Error(uwr.error);
-                    _onError();
-                    yield break;
-                }
-                var data = uwr.downloadHandler.data;
-                logger_.Info("size of image_target is {0}", data.Length);
-                targetBase64 = System.Convert.ToBase64String(data);
-            }
-            // }
 
             // 获取token
             // {
@@ -457,15 +437,33 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             string url = "https://aip.baidubce.com/rest/2.0/face/v1/merge?access_token=" + token;
             var request = new MergeRequest();
             request.image_template.image = imageTemplateBase64;
-            request.image_target.image = targetBase64;
-            string json = JsonConvert.SerializeObject(request);
-            logger_.Info(json);
 
             // 最后一个阶段不用生成
             for (int i = 0; i < stages_.Count - 1; i++)
             {
-                request.alpha = (float)Math.Round(stages_[i].year / 15.0f, 2);
-                logger_.Trace(request.alpha.ToString());
+                // 载入目标图
+                string targetImageFile = System.IO.Path.Combine(dir, String.Format("{0}.jpg", stages_[i].year));
+                string targetBase64 = "";
+                logger_.Trace(targetImageFile);
+                using (var uwr = new UnityWebRequest(new Uri(targetImageFile)))
+                {
+                    uwr.downloadHandler = new DownloadHandlerBuffer();
+                    yield return uwr.SendWebRequest();
+                    if (uwr.result != UnityWebRequest.Result.Success)
+                    {
+                        logger_.Error(uwr.error);
+                        _onError();
+                        yield break;
+                    }
+                    var data = uwr.downloadHandler.data;
+                    logger_.Info("size of image_target is {0}", data.Length);
+                    targetBase64 = System.Convert.ToBase64String(data);
+                }
+
+                //request.alpha = (float)Math.Round(stages_[i].year / 15.0f, 2);
+                request.alpha = 0.5f;
+                request.image_target.image = targetBase64;
+                string json = JsonConvert.SerializeObject(request);
                 using (UnityWebRequest uwr = new UnityWebRequest(url, "POST"))
                 {
                     byte[] postBytes = System.Text.Encoding.UTF8.GetBytes(json);
