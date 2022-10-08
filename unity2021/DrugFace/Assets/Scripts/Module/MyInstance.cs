@@ -58,8 +58,8 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private CameraFaceAnalyzer faceAnalyzer_;
 
-        public MyInstance(string _uid, string _style, MyConfig _config, LibMVCS.Logger _logger, Dictionary<string, LibMVCS.Any> _settings, MyEntryBase _entry, MonoBehaviour _mono, GameObject _rootAttachments)
-            : base(_uid, _style, _config, _logger, _settings, _entry, _mono, _rootAttachments)
+        public MyInstance(string _uid, string _style, MyConfig _config, MyCatalog _catalog, LibMVCS.Logger _logger, Dictionary<string, LibMVCS.Any> _settings, MyEntryBase _entry, MonoBehaviour _mono, GameObject _rootAttachments)
+            : base(_uid, _style, _config, _catalog, _logger, _settings, _entry, _mono, _rootAttachments)
         {
         }
 
@@ -380,20 +380,22 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         {
             var webCamTexture = faceAnalyzer_.WebCamTexture;
             logger_.Info("size of webcam is {0}x{1}", webCamTexture.width, webCamTexture.height);
-            Texture2D t2d = new Texture2D(webCamTexture.width, webCamTexture.height, TextureFormat.RGBA32, false);
-            t2d.SetPixels(webCamTexture.GetPixels());
+            // TODO 适应小边，目前是假设高度比宽度小
+            int minSize = webCamTexture.height;
+            int maxSize = webCamTexture.width;
+            var colors = webCamTexture.GetPixels((maxSize - minSize) / 2, 0, minSize, minSize);
+            Texture2D t2d = new Texture2D(minSize, minSize,TextureFormat.RGBA32, false);
+            t2d.SetPixels(colors);
             t2d.Apply();
 
             defaultFace_.gameObject.SetActive(true);
             byte[] imageTempleteData = t2d.EncodeToJPG();
+            //System.IO.File.WriteAllBytes("D:/face.jpg", imageTempleteData);
             logger_.Info("size of image_template is {0}", imageTempleteData.Length);
             string imageTemplateBase64 = System.Convert.ToBase64String(imageTempleteData);
 
-            string datapath = settings_["datapath"].AsString();
-            string vendor = settings_["vendor"].AsString();
-            string dir = System.IO.Path.Combine(datapath, vendor);
-            dir = System.IO.Path.Combine(dir, "themes");
-            dir = System.IO.Path.Combine(dir, MyEntryBase.ModuleName);
+            string themesDir= settings_["path.themes"].AsString();
+            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
 
             // 获取token
             // {
@@ -442,7 +444,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             for (int i = 0; i < stages_.Count - 1; i++)
             {
                 // 载入目标图
-                string targetImageFile = System.IO.Path.Combine(dir, String.Format("{0}.jpg", stages_[i].year));
+                string targetImageFile = System.IO.Path.Combine(themesDir, String.Format("{0}.jpg", stages_[i].year));
                 string targetBase64 = "";
                 logger_.Trace(targetImageFile);
                 using (var uwr = new UnityWebRequest(new Uri(targetImageFile)))
@@ -495,7 +497,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                         yield break;
                     }
                     byte[] data = System.Convert.FromBase64String(reply.result.merge_image);
-                    System.IO.File.WriteAllBytes(string.Format("D:/{0}.jpg", i), data);
+                    //System.IO.File.WriteAllBytes(string.Format("D:/{0}.jpg", i), data);
                     Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
                     texture.LoadImage(data);
                     Sprite sprite = Sprite.Create(texture, new UnityEngine.Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
