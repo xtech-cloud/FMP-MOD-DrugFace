@@ -1,0 +1,18 @@
+{
+    "sectionS":[
+        {
+            "name":"",
+            "path": "/",
+            "instanceS": [
+                "default"
+            ],
+            "contentS": [
+                "XTC.DrugFace/+"
+            ],
+            "kvS": {
+                "key1":"value1",
+                "key2":"value2"
+            }
+        }
+    ]
+}

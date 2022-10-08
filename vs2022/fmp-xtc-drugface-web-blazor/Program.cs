@@ -6,6 +6,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Grpc.Net.Client;
@@ -19,6 +20,14 @@ public partial class Program
 {
     public static async Task Main(string[] args)
     {
+        var permissioS = new Dictionary<string,string>();
+
+        permissioS[Permissions.HealthyCreate] = "";
+        permissioS[Permissions.HealthyUpdate] = "";
+        permissioS[Permissions.HealthyRetrieve] = "";
+        permissioS[Permissions.HealthyDelete] = "";
+
+
         var channel = GrpcChannel.ForAddress("https://localhost:19000/", new GrpcChannelOptions
         {
             HttpHandler = new GrpcWebHandler(new HttpClientHandler())
@@ -43,6 +52,7 @@ public partial class Program
         var entry = new Entry();
         var options = new Options();
         options.setChannel(channel);
+        options.setPermissionS(permissioS);
         framework.setUserData("XTC.FMP.MOD.DrugFace.LIB.MVCS.Entry", entry);
         entry.Inject(framework, options);
         entry.DynamicRegister("default", logger);
