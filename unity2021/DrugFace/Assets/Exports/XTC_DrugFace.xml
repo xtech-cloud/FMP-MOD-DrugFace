@@ -14,6 +14,11 @@
     -->
   <Styles>
     <Style name="default">
+      <!-- 闲置计时器
+      timeout: 超时时间(单位秒)
+      appear: 剩余多少时间时显示倒计时(单位秒)
+      -->
+      <IdleTimer timeout="30" appear="20"/>
       <!-- 摄像头
        请求的摄像头的像素越高，流畅度越低，如果摄像头支持，建议使用默认值800x600
        width: 摄像头支持的分辨率的宽度

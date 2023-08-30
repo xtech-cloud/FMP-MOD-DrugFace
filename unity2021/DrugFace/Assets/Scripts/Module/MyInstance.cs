@@ -54,6 +54,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 public GameObject hatN;
                 public Text age;
             }
+            public Text textIdleTimer;
             public Infobox infobox = new Infobox();
         }
 
@@ -68,13 +69,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private List<Stage> stages_ = new List<Stage>();
         private Image[] numbers_ = new Image[6];
         private int currentStage_ = 0;
-        private bool autoPlaying_;
         private Coroutine coroutineDetectFace_;
         private Coroutine coroutineInvokeAPI_;
         private Status status_;
         private UiReference uiReference_ = new UiReference();
 
         private CameraFaceAnalyzer faceAnalyzer_;
+        private int idleTimer_ = 0;
+        private Coroutine coroutineIdleTick_ = null;
 
         public MyInstance(string _uid, string _style, MyConfig _config, MyCatalog _catalog, LibMVCS.Logger _logger, Dictionary<string, LibMVCS.Any> _settings, MyEntryBase _entry, MonoBehaviour _mono, GameObject _rootAttachments)
             : base(_uid, _style, _config, _catalog, _logger, _settings, _entry, _mono, _rootAttachments)
@@ -109,8 +111,17 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             uiReference_.infobox.hatY = rootUI.transform.Find("infobox/hat/value_y").gameObject;
             uiReference_.infobox.hatN = rootUI.transform.Find("infobox/hat/value_n").gameObject;
             uiReference_.infobox.age = rootUI.transform.Find("infobox/age/value").GetComponent<Text>();
+            uiReference_.textIdleTimer = rootUI.transform.Find("textIdleTimer").GetComponent<Text>();
 
-            btnReset_.onClick.AddListener(reset);
+            btnReset_.onClick.AddListener(() =>
+            {
+                if (null != coroutineIdleTick_)
+                {
+                    mono_.StopCoroutine(coroutineIdleTick_);
+                    coroutineIdleTick_ = null;
+                }
+                reset();
+            });
             btnPhoto_.onClick.AddListener(capture);
 
             int[] years = new int[] { 1, 2, 4, 6, 8, 10, 12, 15 };
@@ -131,8 +142,8 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 stage.angle = -91 - i * 178 / 7;
                 stage.tgTime.transform.Find("button").GetComponent<Button>().onClick.AddListener(() =>
                 {
-                    autoPlaying_ = false;
                     stage.tgTime.isOn = true;
+                    resetIdleTimer();
                 });
                 stage.tgTime.onValueChanged.AddListener((_toggle) =>
                 {
@@ -209,7 +220,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
             foreach (var stage in stages_)
             {
-                stage.tgTime.interactable = false;
+                stage.tgTime.transform.Find("button").GetComponent<Button>().interactable = false;
             }
 
             uiReference_.infobox.female.SetActive(false);
@@ -219,6 +230,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             uiReference_.infobox.hatY.SetActive(false);
             uiReference_.infobox.hatN.SetActive(false);
             uiReference_.infobox.age.text = "";
+            uiReference_.textIdleTimer.gameObject.SetActive(false);
 
             currentStage_ = -1;
             status_ = Status.Idle;
@@ -249,7 +261,6 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 coroutineInvokeAPI_ = null;
 
                 btnPhoto_.gameObject.SetActive(false);
-                btnReset_.gameObject.SetActive(true);
                 organ_.gameObject.SetActive(true);
                 stages_[0].tgTime.isOn = true;
                 groupYears_.allowSwitchOff = false;
@@ -262,12 +273,6 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private IEnumerator rotateDial(Stage _stage)
         {
-            // 动画前关闭交互
-            foreach (var stage in stages_)
-            {
-                stage.tgTime.interactable = false;
-            }
-
             Stage stageOut = null;
             if (currentStage_ >= 0)
             {
@@ -315,28 +320,36 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
             currentStage_ = _stage.index;
 
-            // 动画后打开交互
-            foreach (var stage in stages_)
-            {
-                stage.tgTime.interactable = true;
-            }
+            // 自动播放完成
+            if (currentStage_ >= stages_.Count - 1)
+                onAutoPlayFinish();
         }
 
         private IEnumerator autoPlay()
         {
             int index = 1;
-            autoPlaying_ = true;
             while (true)
             {
                 yield return new WaitForSeconds(3);
-                if (!autoPlaying_)
-                    break;
                 var stage = stages_[index];
                 stage.tgTime.isOn = true;
                 index += 1;
                 if (index >= stages_.Count)
                     break;
             }
+        }
+
+        private void onAutoPlayFinish()
+        {
+            btnReset_.gameObject.SetActive(true);
+            //允许手动点击
+            foreach (var stage in stages_)
+            {
+                stage.tgTime.transform.Find("button").GetComponent<Button>().interactable = true;
+            }
+
+            //启动闲置计时器
+            coroutineIdleTick_ = mono_.StartCoroutine(startIdleTimer());
         }
 
         private IEnumerator detectFace()
@@ -385,6 +398,30 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
                 status_ = Status.Ready;
             }
+        }
+
+        private IEnumerator startIdleTimer()
+        {
+            resetIdleTimer();
+            while (true)
+            {
+                int left = style_.idleTimer.timeout - idleTimer_;
+                uiReference_.textIdleTimer.text = left.ToString();
+                if (left <= style_.idleTimer.appear)
+                    uiReference_.textIdleTimer.gameObject.SetActive(true);
+                yield return new WaitForSeconds(1.0f);
+                idleTimer_ += 1;
+                if (idleTimer_ > style_.idleTimer.timeout)
+                    break;
+            }
+            reset();
+            coroutineIdleTick_ = null;
+        }
+
+        private void resetIdleTimer()
+        {
+            idleTimer_ = 0;
+            uiReference_.textIdleTimer.gameObject.SetActive(false);
         }
 
 

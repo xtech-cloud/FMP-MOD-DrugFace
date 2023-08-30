@@ -46,6 +46,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             public int fps { get; set; } = 30;
         }
 
+        public class IdleTimer
+        {
+            [XmlAttribute("timeout")]
+            public int timeout { get; set; } = 30;
+            [XmlAttribute("appear")]
+            public int appear { get; set; } = 20;
+        }
+
         public class Style
         {
             [XmlAttribute("name")]
@@ -55,7 +63,10 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             public Camera camera { get; set; } = new Camera();
             [XmlElement("MergeMatrix")]
             public MergeMatrix mergeMatrix { get; set; } = new MergeMatrix();
+            [XmlElement("IdelTimer")]
+            public IdleTimer idleTimer { get; set; } = new IdleTimer();
         }
+
 
 
         [XmlArray("Styles"), XmlArrayItem("Style")]
