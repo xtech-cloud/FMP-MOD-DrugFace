@@ -12,6 +12,8 @@ using FaceAnalyzer;
 using UnityEngine.Networking;
 using System;
 using Newtonsoft.Json;
+using UnityEngine.Windows;
+using UnityEngine.Assertions.Must;
 
 namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 {
@@ -28,6 +30,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         public float fillAmount;
     }
 
+
     /// <summary>
     /// 实例类
     /// </summary>
@@ -38,6 +41,20 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             Idle,
             Ready,
             Busy
+        }
+        public class UiReference
+        {
+            public class Infobox
+            {
+                public GameObject male;
+                public GameObject female;
+                public GameObject glassY;
+                public GameObject glassN;
+                public GameObject hatY;
+                public GameObject hatN;
+                public Text age;
+            }
+            public Infobox infobox = new Infobox();
         }
 
         private ToggleGroup groupYears_;
@@ -55,6 +72,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private Coroutine coroutineDetectFace_;
         private Coroutine coroutineInvokeAPI_;
         private Status status_;
+        private UiReference uiReference_ = new UiReference();
 
         private CameraFaceAnalyzer faceAnalyzer_;
 
@@ -84,6 +102,13 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             numbers_[3] = rootUI.transform.Find("face/camera/2").GetComponent<Image>();
             numbers_[4] = rootUI.transform.Find("face/camera/1").GetComponent<Image>();
             numbers_[5] = rootUI.transform.Find("face/camera/0").GetComponent<Image>();
+            uiReference_.infobox.male = rootUI.transform.Find("infobox/gender/value_m").gameObject;
+            uiReference_.infobox.female = rootUI.transform.Find("infobox/gender/value_f").gameObject;
+            uiReference_.infobox.glassY = rootUI.transform.Find("infobox/glass/value_y").gameObject;
+            uiReference_.infobox.glassN = rootUI.transform.Find("infobox/glass/value_n").gameObject;
+            uiReference_.infobox.hatY = rootUI.transform.Find("infobox/hat/value_y").gameObject;
+            uiReference_.infobox.hatN = rootUI.transform.Find("infobox/hat/value_n").gameObject;
+            uiReference_.infobox.age = rootUI.transform.Find("infobox/age/value").GetComponent<Text>();
 
             btnReset_.onClick.AddListener(reset);
             btnPhoto_.onClick.AddListener(capture);
@@ -187,6 +212,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 stage.tgTime.interactable = false;
             }
 
+            uiReference_.infobox.female.SetActive(false);
+            uiReference_.infobox.male.SetActive(false);
+            uiReference_.infobox.glassY.SetActive(false);
+            uiReference_.infobox.glassN.SetActive(false);
+            uiReference_.infobox.hatY.SetActive(false);
+            uiReference_.infobox.hatN.SetActive(false);
+            uiReference_.infobox.age.text = "";
+
             currentStage_ = -1;
             status_ = Status.Idle;
         }
@@ -195,6 +228,17 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         {
             if (null != coroutineInvokeAPI_)
                 mono_.StopCoroutine(coroutineInvokeAPI_);
+
+
+            logger_.Info(faceAnalyzer_.attrGlasses);
+            logger_.Info(faceAnalyzer_.attrHat);
+            uiReference_.infobox.female.SetActive(faceAnalyzer_.attrGender.StartsWith("Female"));
+            uiReference_.infobox.male.SetActive(faceAnalyzer_.attrGender.StartsWith("Male"));
+            uiReference_.infobox.glassY.SetActive(faceAnalyzer_.attrGlasses == "Yes");
+            uiReference_.infobox.glassN.SetActive(faceAnalyzer_.attrGlasses == "No");
+            uiReference_.infobox.hatY.SetActive(faceAnalyzer_.attrHat == "Yes");
+            uiReference_.infobox.hatN.SetActive(faceAnalyzer_.attrHat == "No");
+            uiReference_.infobox.age.text = faceAnalyzer_.attrAge;
 
             coroutineInvokeAPI_ = mono_.StartCoroutine(invokeAPI(() =>
             {
@@ -357,10 +401,11 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             {
                 public string image = "";
                 public string image_type = "BASE64";
+                public string quality_control = "HIGH";
             }
 
-            public string version = "4.0";
-            public float alpha = 0.5f;
+            public string version = "1.0";
+            public string merge_degree = "NORMAL";
             public Image image_template = new Image();
             public Image image_target = new Image();
         }
@@ -378,25 +423,6 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private IEnumerator invokeAPI(Action _onError, Action _onSuccess)
         {
-            var webCamTexture = faceAnalyzer_.WebCamTexture;
-            logger_.Info("size of webcam is {0}x{1}", webCamTexture.width, webCamTexture.height);
-            // TODO 适应小边，目前是假设高度比宽度小
-            int minSize = webCamTexture.height;
-            int maxSize = webCamTexture.width;
-            var colors = webCamTexture.GetPixels((maxSize - minSize) / 2, 0, minSize, minSize);
-            Texture2D t2d = new Texture2D(minSize, minSize,TextureFormat.RGBA32, false);
-            t2d.SetPixels(colors);
-            t2d.Apply();
-
-            defaultFace_.gameObject.SetActive(true);
-            byte[] imageTempleteData = t2d.EncodeToJPG();
-            //System.IO.File.WriteAllBytes("D:/face.jpg", imageTempleteData);
-            logger_.Info("size of image_template is {0}", imageTempleteData.Length);
-            string imageTemplateBase64 = System.Convert.ToBase64String(imageTempleteData);
-
-            string themesDir= settings_["path.themes"].AsString();
-            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
-
             // 获取token
             // {
             WWWForm form = new WWWForm();
@@ -436,18 +462,24 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
             // }
 
+            string imageCamBase64 = getCamImageBase64();
+
+            string themesDir = settings_["path.themes"].AsString();
+            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
+
             string url = "https://aip.baidubce.com/rest/2.0/face/v1/merge?access_token=" + token;
             var request = new MergeRequest();
-            request.image_template.image = imageTemplateBase64;
+            request.merge_degree = style_.mergeMatrix.degree;
 
+            int column = UnityEngine.Random.Range(0, style_.mergeMatrix.column);
             // 最后一个阶段不用生成
             for (int i = 0; i < stages_.Count - 1; i++)
             {
-                // 载入目标图
-                string targetImageFile = System.IO.Path.Combine(themesDir, String.Format("{0}.jpg", stages_[i].year));
-                string targetBase64 = "";
-                logger_.Trace(targetImageFile);
-                using (var uwr = new UnityWebRequest(new Uri(targetImageFile)))
+                string image = getThemeImage(i, column);
+                // 载入模板图
+                string imageAvatarBase64 = "";
+                logger_.Trace("ready to load template image from {0}", image);
+                using (var uwr = new UnityWebRequest(new Uri(image)))
                 {
                     uwr.downloadHandler = new DownloadHandlerBuffer();
                     yield return uwr.SendWebRequest();
@@ -458,13 +490,12 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                         yield break;
                     }
                     var data = uwr.downloadHandler.data;
-                    logger_.Info("size of image_target is {0}", data.Length);
-                    targetBase64 = System.Convert.ToBase64String(data);
+                    logger_.Info("size of template_image is {0}", data.Length);
+                    imageAvatarBase64 = System.Convert.ToBase64String(data);
                 }
 
-                //request.alpha = (float)Math.Round(stages_[i].year / 15.0f, 2);
-                request.alpha = 0.5f;
-                request.image_target.image = targetBase64;
+                request.image_template.image = imageCamBase64;
+                request.image_target.image = imageAvatarBase64;
                 string json = JsonConvert.SerializeObject(request);
                 using (UnityWebRequest uwr = new UnityWebRequest(url, "POST"))
                 {
@@ -497,7 +528,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                         yield break;
                     }
                     byte[] data = System.Convert.FromBase64String(reply.result.merge_image);
-                    //System.IO.File.WriteAllBytes(string.Format("D:/{0}.jpg", i), data);
+                    //saveImage(string.Format("_merge{0}.jpg", i + 1), data);
                     Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
                     texture.LoadImage(data);
                     Sprite sprite = Sprite.Create(texture, new UnityEngine.Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
@@ -510,6 +541,65 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             defaultFace_.gameObject.SetActive(false);
             yield return new WaitForEndOfFrame();
             _onSuccess();
+        }
+
+        private string getCamImageBase64()
+        {
+            var webCamTexture = faceAnalyzer_.WebCamTexture;
+            logger_.Info("size of webcam is {0}x{1}", webCamTexture.width, webCamTexture.height);
+            // TODO 适应小边，目前是假设高度比宽度小
+            int minSize = webCamTexture.height;
+            int maxSize = webCamTexture.width;
+            var colors = webCamTexture.GetPixels((maxSize - minSize) / 2, 0, minSize, minSize);
+            Texture2D t2d = new Texture2D(minSize, minSize, TextureFormat.RGBA32, false);
+            t2d.SetPixels(colors);
+            t2d.Apply();
+
+            defaultFace_.gameObject.SetActive(true);
+            byte[] imageData = t2d.EncodeToJPG();
+            logger_.Info("size of image_template is {0}", imageData.Length);
+            //saveImage("_merge0.jpg", imageData);
+            string imageBase64 = System.Convert.ToBase64String(imageData);
+            return imageBase64;
+        }
+
+        private string getThemeImage(int _row, int _column)
+        {
+            if (_row >= style_.mergeMatrix.row)
+            {
+                return null;
+            }
+
+            string gender = faceAnalyzer_.attrGender;
+            string image;
+            if (gender == "female")
+            {
+                image = style_.mergeMatrix.rowS[_row].femaleImageS[_column].file;
+            }
+            else
+            {
+                image = style_.mergeMatrix.rowS[_row].maleImageS[_column].file;
+            }
+
+            string themesDir = settings_["path.themes"].AsString();
+            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
+            string file = System.IO.Path.Combine(themesDir, image);
+            return file;
+        }
+
+        private void saveImage(string _name, byte[] _data)
+        {
+            string themesDir = settings_["path.themes"].AsString();
+            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
+            string file = System.IO.Path.Combine(themesDir, _name);
+            try
+            {
+                System.IO.File.WriteAllBytes(file, _data);
+            }
+            catch (Exception e)
+            {
+                logger_.Exception(e);
+            }
         }
     }
 }

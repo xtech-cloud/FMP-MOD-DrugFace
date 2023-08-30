@@ -20,6 +20,69 @@
        height: 摄像头支持的分辨率的高度
       -->
       <Camera width="800" height="600" fps="30"/>
+      <!-- 图像融合矩阵
+        degree: 融合度，可选值为[LOW,NORMAL,HIGH,COMPLETE]
+      -->
+      <MergeMatrix row="7" column="1" degree="HIGH">
+        <RowS>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage1.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage1.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage2.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage2.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage4.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage4.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage6.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage6.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage8.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage8.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage10.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage10.jpg"/>
+            </MaleImageS>
+          </Row>
+          <Row>
+            <FemaleImageS>
+              <Image file="male-1-20year-stage12.jpg"/>
+            </FemaleImageS>
+            <MaleImageS>
+              <Image file="male-1-20year-stage12.jpg"/>
+            </MaleImageS>
+          </Row>
+        </RowS>
+      </MergeMatrix>
     </Style>
   </Styles>
   <!-- 预创建的实例列表
