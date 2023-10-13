@@ -38,9 +38,9 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
     {
         enum Status
         {
-            Idle,
-            Ready,
-            Busy
+            Idle, // 空闲
+            Ready, // 倒计时
+            Busy // 图像合成和图像展示中
         }
         public class UiReference
         {
@@ -64,6 +64,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private Button btnReset_;
         private Transform organ_;
         private Transform defaultFace_;
+        private GameObject imgMerging_;
         private Image scaleLight_;
         private RawImage imgCamera_;
         private List<Stage> stages_ = new List<Stage>();
@@ -77,6 +78,8 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private CameraFaceAnalyzer faceAnalyzer_;
         private int idleTimer_ = 0;
         private Coroutine coroutineIdleTick_ = null;
+        private Coroutine coroutineAutoplay_ = null;
+        private Coroutine coroutineRotateDial_ = null;
 
         public MyInstance(string _uid, string _style, MyConfig _config, MyCatalog _catalog, LibMVCS.Logger _logger, Dictionary<string, LibMVCS.Any> _settings, MyEntryBase _entry, MonoBehaviour _mono, GameObject _rootAttachments)
             : base(_uid, _style, _config, _catalog, _logger, _settings, _entry, _mono, _rootAttachments)
@@ -97,6 +100,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             btnReset_ = rootUI.transform.Find("btnReset").GetComponent<Button>();
             btnPhoto_ = rootUI.transform.Find("btnPhoto").GetComponent<Button>();
             defaultFace_ = rootUI.transform.Find("face/default");
+            imgMerging_ = rootUI.transform.Find("face/merging").gameObject;
             imgCamera_ = rootUI.transform.Find("face/camera").GetComponent<RawImage>();
             numbers_[0] = rootUI.transform.Find("face/camera/5").GetComponent<Image>();
             numbers_[1] = rootUI.transform.Find("face/camera/4").GetComponent<Image>();
@@ -149,7 +153,9 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                 {
                     if (!_toggle)
                         return;
-                    mono_.StartCoroutine(rotateDial(stage));
+                    if (null != coroutineRotateDial_)
+                        mono_.StopCoroutine(coroutineRotateDial_);
+                    coroutineRotateDial_ = mono_.StartCoroutine(rotateDial(stage));
                 });
                 stages_.Add(stage);
             }
@@ -198,6 +204,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             btnPhoto_.gameObject.SetActive(true);
             btnReset_.gameObject.SetActive(false);
             defaultFace_.gameObject.SetActive(true);
+            imgMerging_.gameObject.SetActive(false);
             imgCamera_.gameObject.SetActive(true);
             organ_.gameObject.SetActive(false);
             groupYears_.allowSwitchOff = true;
@@ -233,25 +240,35 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             uiReference_.textIdleTimer.gameObject.SetActive(false);
 
             currentStage_ = -1;
-            status_ = Status.Idle;
         }
 
         private void capture()
         {
-            if (null != coroutineInvokeAPI_)
-                mono_.StopCoroutine(coroutineInvokeAPI_);
-
-
             logger_.Info(faceAnalyzer_.attrGlasses);
             logger_.Info(faceAnalyzer_.attrHat);
-            uiReference_.infobox.female.SetActive(faceAnalyzer_.attrGender.StartsWith("Female"));
-            uiReference_.infobox.male.SetActive(faceAnalyzer_.attrGender.StartsWith("Male"));
-            uiReference_.infobox.glassY.SetActive(faceAnalyzer_.attrGlasses == "Yes");
-            uiReference_.infobox.glassN.SetActive(faceAnalyzer_.attrGlasses == "No");
-            uiReference_.infobox.hatY.SetActive(faceAnalyzer_.attrHat == "Yes");
-            uiReference_.infobox.hatN.SetActive(faceAnalyzer_.attrHat == "No");
-            uiReference_.infobox.age.text = faceAnalyzer_.attrAge;
+            if (null != faceAnalyzer_.attrGender)
+            {
+                uiReference_.infobox.female.SetActive(faceAnalyzer_.attrGender.StartsWith("Female"));
+                uiReference_.infobox.male.SetActive(faceAnalyzer_.attrGender.StartsWith("Male"));
+            }
+            if (null != faceAnalyzer_.attrGlasses)
+            {
+                uiReference_.infobox.glassY.SetActive(faceAnalyzer_.attrGlasses == "Yes");
+                uiReference_.infobox.glassN.SetActive(faceAnalyzer_.attrGlasses == "No");
+            }
+            if (null != faceAnalyzer_.attrHat)
+            {
+                uiReference_.infobox.hatY.SetActive(faceAnalyzer_.attrHat == "Yes");
+                uiReference_.infobox.hatN.SetActive(faceAnalyzer_.attrHat == "No");
+            }
+            if (null != faceAnalyzer_.attrAge)
+            {
+                uiReference_.infobox.age.text = faceAnalyzer_.attrAge;
+            }
 
+            imgMerging_.gameObject.SetActive(true);
+            if (null != coroutineInvokeAPI_)
+                mono_.StopCoroutine(coroutineInvokeAPI_);
             coroutineInvokeAPI_ = mono_.StartCoroutine(invokeAPI(() =>
             {
                 coroutineInvokeAPI_ = null;
@@ -262,17 +279,20 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
                 btnPhoto_.gameObject.SetActive(false);
                 organ_.gameObject.SetActive(true);
-                stages_[0].tgTime.isOn = true;
                 groupYears_.allowSwitchOff = false;
                 defaultFace_.gameObject.SetActive(false);
+                imgMerging_.SetActive(false);
                 imgCamera_.gameObject.SetActive(false);
 
-                mono_.StartCoroutine(autoPlay());
+                if (null != coroutineAutoplay_)
+                    mono_.StopCoroutine(coroutineAutoplay_);
+                coroutineAutoplay_ = mono_.StartCoroutine(autoPlay());
             }));
         }
 
         private IEnumerator rotateDial(Stage _stage)
         {
+            logger_.Debug("rotate dial started");
             Stage stageOut = null;
             if (currentStage_ >= 0)
             {
@@ -320,23 +340,30 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
             currentStage_ = _stage.index;
 
+            logger_.Debug("rotate dial finished");
             // 自动播放完成
+            coroutineRotateDial_ = null;
             if (currentStage_ >= stages_.Count - 1)
                 onAutoPlayFinish();
         }
 
         private IEnumerator autoPlay()
         {
+            logger_.Debug("autoPlay Started");
+            stages_[0].tgTime.isOn = true;
             int index = 1;
             while (true)
             {
                 yield return new WaitForSeconds(3);
+                logger_.Debug("autoPlay tick");
                 var stage = stages_[index];
                 stage.tgTime.isOn = true;
                 index += 1;
                 if (index >= stages_.Count)
                     break;
             }
+            coroutineAutoplay_ = null;
+            logger_.Debug("autoPlay Finished");
         }
 
         private void onAutoPlayFinish()
@@ -368,7 +395,8 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
                 bool faceDetected = faceAnalyzer_.DetectFace();
                 defaultFace_.gameObject.SetActive(!faceDetected);
-                // 没有检测到人脸，重置计时器
+                // 没有检测到人脸，重置整个状态到Idle
+                // 检测同时在Ready状态也执行，并可中断Ready状态
                 if (!faceDetected)
                 {
                     numberIndex = 0;
@@ -376,6 +404,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                     continue;
                 }
 
+                // 在Ready阶段倒计时
                 if (Status.Ready == status_)
                 {
                     if (timer >= 1.0f)
@@ -396,6 +425,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                     continue;
                 }
 
+                // 检测到人脸时在下一帧倒计时
                 status_ = Status.Ready;
             }
         }
@@ -442,9 +472,15 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
 
             public string version = "1.0";
+            public string alpha = "0.5";
             public string merge_degree = "NORMAL";
             public Image image_template = new Image();
             public Image image_target = new Image();
+
+            public override string ToString()
+            {
+                return String.Format("version:{0} merge_degree:{1} templateQuality:{2} targetQuality:{3}", version, merge_degree, image_template.quality_control, image_target.quality_control);
+            }
         }
 
         class MergeReply
@@ -465,7 +501,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             WWWForm form = new WWWForm();
             form.AddField("grant_type", "client_credentials");
             form.AddField("client_id", "fZqIE9XOwBujIVyiB1OpiZ3h");
-            form.AddField("client_secret", "a64mqWt4Hbkz6FrmeykwaAceaRqCO3SO");
+            form.AddField("client_secret", "EnLC2sPOkcF3WGkZbnHpcXRwOzFL5lAv");
 
             string token;
             using (UnityWebRequest uwr = UnityWebRequest.Post("https://aip.baidubce.com/oauth/2.0/token", form))
@@ -499,14 +535,34 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
             // }
 
-            string imageCamBase64 = getCamImageBase64();
+            string imageCamBase64;
+            if (style_.debug.useDebugPhoto)
+                imageCamBase64 = getDebugImageBase64();
+            else
+                imageCamBase64 = getCamImageBase64();
+
 
             string themesDir = settings_["path.themes"].AsString();
             themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
 
             string url = "https://aip.baidubce.com/rest/2.0/face/v1/merge?access_token=" + token;
             var request = new MergeRequest();
+            request.version = style_.mergeMatrix.version;
             request.merge_degree = style_.mergeMatrix.degree;
+            request.image_template.quality_control = style_.mergeMatrix.templateQuality;
+            request.image_target.quality_control = style_.mergeMatrix.targetQuality;
+            logger_.Info(request.ToString());
+            if (request.version == "4.0")
+            {
+                switch (request.merge_degree)
+                {
+                    case "LOW": request.alpha = "0.75"; break;
+                    case "NORMAL": request.alpha = "0.5"; break;
+                    case "HIGH": request.alpha = "0.25"; break;
+                    case "COMPLETE": request.alpha = "0"; break;
+                    default: request.alpha = "1"; break;
+                }
+            }
 
             int column = UnityEngine.Random.Range(0, style_.mergeMatrix.column);
             // 最后一个阶段不用生成
@@ -565,7 +621,10 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
                         yield break;
                     }
                     byte[] data = System.Convert.FromBase64String(reply.result.merge_image);
-                    //saveImage(string.Format("_merge{0}.jpg", i + 1), data);
+                    if (style_.debug.saveResultImage)
+                    {
+                        saveImage(string.Format("_merge{0}.jpg", i + 1), data);
+                    }
                     Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
                     texture.LoadImage(data);
                     Sprite sprite = Sprite.Create(texture, new UnityEngine.Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
@@ -576,6 +635,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             logger_.Info("merge success!!");
             scaleLight_.fillAmount = 1.0f;
             defaultFace_.gameObject.SetActive(false);
+            imgMerging_.SetActive(false);
             yield return new WaitForEndOfFrame();
             _onSuccess();
         }
@@ -592,12 +652,21 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             t2d.SetPixels(colors);
             t2d.Apply();
 
-            defaultFace_.gameObject.SetActive(true);
             byte[] imageData = t2d.EncodeToJPG();
             logger_.Info("size of image_template is {0}", imageData.Length);
-            //saveImage("_merge0.jpg", imageData);
+            saveImage(String.Format("_{0}.jpg", System.DateTime.Now.ToString("yyyyMMddhhmmss")), imageData);
             string imageBase64 = System.Convert.ToBase64String(imageData);
             return imageBase64;
+        }
+
+        private string getDebugImageBase64()
+        {
+            string themesDir = settings_["path.themes"].AsString();
+            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
+            themesDir = System.IO.Path.Combine(themesDir, "_debug");
+            string file = System.IO.Path.Combine(themesDir, "debug.jpg");
+            byte[] data = File.ReadAllBytes(file);
+            return Convert.ToBase64String(data);
         }
 
         private string getThemeImage(int _row, int _column)
@@ -626,9 +695,15 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
         private void saveImage(string _name, byte[] _data)
         {
-            string themesDir = settings_["path.themes"].AsString();
-            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
-            string file = System.IO.Path.Combine(themesDir, _name);
+            string debugDir = settings_["path.themes"].AsString();
+            debugDir = System.IO.Path.Combine(debugDir, MyEntryBase.ModuleName);
+            debugDir = System.IO.Path.Combine(debugDir, "_debug");
+            if (!Directory.Exists(debugDir))
+            {
+                Directory.CreateDirectory(debugDir);
+            }
+
+            string file = System.IO.Path.Combine(debugDir, _name);
             try
             {
                 System.IO.File.WriteAllBytes(file, _data);

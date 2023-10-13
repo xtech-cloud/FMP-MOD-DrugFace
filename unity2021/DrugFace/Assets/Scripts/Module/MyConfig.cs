@@ -8,6 +8,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
     /// </summary>
     public class MyConfig : MyConfigBase
     {
+        public class Debug
+        {
+            [XmlAttribute("useDebugPhoto")]
+            public bool useDebugPhoto { get; set; } = false;
+            [XmlAttribute("saveResultImage")]
+            public bool saveResultImage { get; set; } = false;
+        }
+
         public class Image
         {
             [XmlAttribute("file")]
@@ -28,8 +36,14 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             public int row { get; set; } = 0;
             [XmlAttribute("column")]
             public int column { get; set; } = 0;
+            [XmlAttribute("version")]
+            public string version { get; set; } = "1.0";
             [XmlAttribute("degree")]
             public string degree { get; set; } = "NORMAL";
+            [XmlAttribute("templateQuality")]
+            public string templateQuality { get; set; } = "NONE";
+            [XmlAttribute("targetQuality")]
+            public string targetQuality { get; set; } = "NONE";
             [XmlArray("RowS"), XmlArrayItem("Row")]
             public Row[] rowS { get; set; } = new Row[0];
         }
@@ -58,6 +72,9 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         {
             [XmlAttribute("name")]
             public string name { get; set; } = "";
+
+            [XmlElement("Debug")]
+            public Debug debug { get; set; } = new Debug();
 
             [XmlElement("Camera")]
             public Camera camera { get; set; } = new Camera();

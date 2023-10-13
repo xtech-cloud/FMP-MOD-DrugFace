@@ -14,6 +14,11 @@
     -->
   <Styles>
     <Style name="default">
+      <!-- 
+      useDebugPhoto: 是否使用theme文件夹中的_debug/debug.jpg代替拍照
+      saveResultImage: 是否使用保存合成结果图到本地
+      -->
+      <Debug useDebugPhoto="false" saveResultImage="false"/>
       <!-- 闲置计时器
       timeout: 超时时间(单位秒)
       appear: 剩余多少时间时显示倒计时(单位秒)
@@ -26,9 +31,13 @@
       -->
       <Camera width="800" height="600" fps="30"/>
       <!-- 图像融合矩阵
-        degree: 融合度，可选值为[LOW,NORMAL,HIGH,COMPLETE]
+        将目标图的脸融合进模板图中，拍摄的照片作为模板图中，矩阵中的图作为目标图
+        degree: 融合图和目标图的相似度，可选值为[LOW,NORMAL,HIGH,COMPLETE], COMPLETE将整个人脸完全使用目标图
+        templateQuality: 模板图质量要求，可选值为[NONE,LOW,NORMAL,HIGH]，质量未达到要求的图片合成会失败
+        targetQuality: 目标图质量要求，可选值为[NONE,LOW,NORMAL,HIGH]，质量未达到要求的图片合成会失败
+        version: api版本，可选值为[1.0, 2.0, 3.0, 4.0]
       -->
-      <MergeMatrix row="7" column="1" degree="HIGH">
+      <MergeMatrix row="7" column="1" version="1.0" degree="NORMAL" templateQuality="NORMAL" targetQuality="HIGH">
         <RowS>
           <Row>
             <FemaleImageS>
