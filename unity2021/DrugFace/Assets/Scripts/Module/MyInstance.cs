@@ -1,7 +1,6 @@
 
 
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using LibMVCS = XTC.FMP.LIB.MVCS;
@@ -12,8 +11,7 @@ using FaceAnalyzer;
 using UnityEngine.Networking;
 using System;
 using Newtonsoft.Json;
-using UnityEngine.Windows;
-using UnityEngine.Assertions.Must;
+using System.IO;
 
 namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 {
@@ -543,7 +541,7 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
 
 
             string themesDir = settings_["path.themes"].AsString();
-            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
+            themesDir = Path.Combine(themesDir, MyEntryBase.ModuleName);
 
             string url = "https://aip.baidubce.com/rest/2.0/face/v1/merge?access_token=" + token;
             var request = new MergeRequest();
@@ -662,9 +660,9 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
         private string getDebugImageBase64()
         {
             string themesDir = settings_["path.themes"].AsString();
-            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
-            themesDir = System.IO.Path.Combine(themesDir, "_debug");
-            string file = System.IO.Path.Combine(themesDir, "debug.jpg");
+            themesDir = Path.Combine(themesDir, MyEntryBase.ModuleName);
+            themesDir = Path.Combine(themesDir, "_debug");
+            string file = Path.Combine(themesDir, "debug.jpg");
             byte[] data = File.ReadAllBytes(file);
             return Convert.ToBase64String(data);
         }
@@ -688,25 +686,25 @@ namespace XTC.FMP.MOD.DrugFace.LIB.Unity
             }
 
             string themesDir = settings_["path.themes"].AsString();
-            themesDir = System.IO.Path.Combine(themesDir, MyEntryBase.ModuleName);
-            string file = System.IO.Path.Combine(themesDir, image);
+            themesDir = Path.Combine(themesDir, MyEntryBase.ModuleName);
+            string file = Path.Combine(themesDir, image);
             return file;
         }
 
         private void saveImage(string _name, byte[] _data)
         {
             string debugDir = settings_["path.themes"].AsString();
-            debugDir = System.IO.Path.Combine(debugDir, MyEntryBase.ModuleName);
-            debugDir = System.IO.Path.Combine(debugDir, "_debug");
+            debugDir = Path.Combine(debugDir, MyEntryBase.ModuleName);
+            debugDir = Path.Combine(debugDir, "_debug");
             if (!Directory.Exists(debugDir))
             {
                 Directory.CreateDirectory(debugDir);
             }
 
-            string file = System.IO.Path.Combine(debugDir, _name);
+            string file = Path.Combine(debugDir, _name);
             try
             {
-                System.IO.File.WriteAllBytes(file, _data);
+                File.WriteAllBytes(file, _data);
             }
             catch (Exception e)
             {
